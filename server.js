@@ -22,7 +22,6 @@ app.use(cors({
   }
 }));
 
-
 let db = null;
 
 function openDatabase() {
@@ -47,7 +46,6 @@ function closeDatabase() {
   }
 }
 
-
 function fetchDatabase() {
   closeDatabase(); // Close the current database connection
 
@@ -69,7 +67,6 @@ function fetchDatabase() {
   });
 }
 
-
 // Fetch the database every 3 minutes
 setInterval(fetchDatabase, 180000);
 
@@ -87,8 +84,9 @@ const db = new sqlite3.Database(dbPath, (err) => {
 // Generic function to handle database errors
 const handleDBError = (res, err) => res.status(500).json({ error: err.message });
 
-// Helper function to create standard CRUD routes for a table
+// Helper function to create GET routes for a table
 const createTableRoutes = (tableName) => {
+  // GET all records from the table
   app.get(`/api/${tableName}`, (req, res) => {
     if (!db) return handleDBError(res, new Error("Database not connected"));
 
@@ -98,6 +96,7 @@ const createTableRoutes = (tableName) => {
     });
   });
 
+  // GET a single record by ID from the table
   app.get(`/api/${tableName}/:id`, (req, res) => {
     const { id } = req.params;
     db.get(`SELECT * FROM ${tableName} WHERE id = ?`, [id], (err, row) => {
@@ -105,49 +104,9 @@ const createTableRoutes = (tableName) => {
       res.json({ data: row });
     });
   });
-
-  app.post(`/api/${tableName}`, (req, res) => {
-    if (!db) return handleDBError(res, new Error("Database not connected"));
-
-    const columns = Object.keys(req.body).join(", ");
-    const values = Object.values(req.body);
-    const placeholders = values.map(() => "?").join(", ");
-    db.run(
-      `INSERT INTO ${tableName} (${columns}) VALUES (${placeholders})`,
-      values,
-      function (err) {
-        if (err) return handleDBError(res, err);
-        res.status(201).json({ id: this.lastID });
-      }
-    );
-  });
-
-  app.put(`/api/${tableName}/:id`, (req, res) => {
-    const { id } = req.params;
-    const updates = Object.entries(req.body)
-      .map(([key, value]) => `${key} = ?`)
-      .join(", ");
-    const values = [...Object.values(req.body), id];
-    db.run(
-      `UPDATE ${tableName} SET ${updates} WHERE id = ?`,
-      values,
-      function (err) {
-        if (err) return handleDBError(res, err);
-        res.json({ changes: this.changes });
-      }
-    );
-  });
-
-  app.delete(`/api/${tableName}/:id`, (req, res) => {
-    const { id } = req.params;
-    db.run(`DELETE FROM ${tableName} WHERE id = ?`, [id], function (err) {
-      if (err) return handleDBError(res, err);
-      res.json({ changes: this.changes });
-    });
-  });
 };
 
-// Create routes for all tables
+// Create routes for all tables (only GET requests)
 createTableRoutes('bot_status');
 createTableRoutes('orders');
 createTableRoutes('network_data');
@@ -158,7 +117,7 @@ createTableRoutes('balances');
 createTableRoutes('trade_settings');
 createTableRoutes('token_prices');
 createTableRoutes('account_data');
-createTableRoutes('runtime_data'); 
+createTableRoutes('runtime_data');
 createTableRoutes('indicators');
 createTableRoutes('caller_balance');
 
